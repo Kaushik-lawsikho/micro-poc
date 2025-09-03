@@ -1,9 +1,11 @@
 {
-  "name": "users-service",
+  "name": "orders-service",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,5 +17,8 @@
     "express": "^5.1.0",
     "pg": "^8.16.3",
     "typeorm": "^0.3.26"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }
