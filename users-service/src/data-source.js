@@ -6,7 +6,7 @@ const AppDataSource = new DataSource({
   host: "localhost",
   port: 5432,
   username: "postgres",   // your pgAdmin username
-  password: "baba", // your pgAdmin password
+  password: "your_db_password", // your pgAdmin password
   database: "userdb",
   synchronize: true,
   dropSchema: true,
