@@ -1,0 +1,42 @@
+/* Error alert styles */
+.error-alert {
+  background-color: #fee;
+  border: 1px solid #fcc;
+  border-radius: 4px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #c33;
+}
+
+.error-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.error-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.error-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #c33;
+  padding: 0;
+  line-height: 1;
+}
+
+.error-close:hover {
+  color: #a00;
+}
+
+.error-message {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}

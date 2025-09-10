@@ -9,7 +9,7 @@ const AppDataSource = new DataSource({
   password: "your_db_password", // your pgAdmin password
   database: "userdb",
   synchronize: true,
-  dropSchema: true,
+  dropSchema: false, // Don't drop schema on restart
   entities: [User],
 });
 

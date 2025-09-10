@@ -9,7 +9,7 @@ const AppDataSource = new DataSource({
   password: "your_db_password",
   database: "orderdb",
   synchronize: true,
-  dropSchema: true,
+  dropSchema: false,
   entities: [Order],
 });
 

@@ -13,6 +13,16 @@ AppDataSource.initialize()
     app.use("/users", userRoutes);
     app.use("/health", healthRoutes);
 
+    // Root health check
+    app.get("/", (req, res) => {
+      res.json({
+        success: true,
+        service: "Users Service",
+        status: "healthy",
+        timestamp: new Date().toISOString()
+      });
+    });
+
     app.listen(4001, () => {
       console.log("Users service running on http://localhost:4001");
     });

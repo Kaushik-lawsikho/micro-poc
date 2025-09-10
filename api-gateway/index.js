@@ -1,4 +1,13 @@
 // Enhanced API Gateway with Authentication, Throttling, Logging, and Transformation
+
+// Suppress deprecation warnings
+process.removeAllListeners('warning');
+process.on('warning', (warning) => {
+  if (warning.name !== 'DeprecationWarning') {
+    console.warn(warning.name, warning.message);
+  }
+});
+
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const helmet = require('helmet');
@@ -6,7 +15,6 @@ const cors = require('cors');
 
 // Import configuration and middleware
 const config = require('./config');
-const { authenticateApiKey } = require('./middleware/auth');
 const { globalRateLimiter, authRateLimiter } = require('./middleware/throttling');
 const { requestLogger, responseLogger, errorLogger } = require('./middleware/logging');
 const { transformRequest, transformResponse, transformErrorResponse } = require('./middleware/transformation');
@@ -105,47 +113,304 @@ app.get('/docs', (req, res) => {
   });
 });
 
-// Authentication middleware for protected routes
-app.use('/users', authenticateApiKey);
-app.use('/orders', authenticateApiKey);
-
-// Enhanced proxy middleware with error handling
-const createEnhancedProxy = (target, serviceName) => {
-  return createProxyMiddleware({
-    target,
-    changeOrigin: true,
-    logLevel: 'silent', // We handle logging ourselves
-    onError: (err, req, res) => {
-      console.error(`Proxy error for ${serviceName}:`, err.message);
-      res.status(503).json({
-        success: false,
-        error: 'Service Unavailable',
-        message: `${serviceName} service is currently unavailable`,
-        requestId: req.requestId,
-        timestamp: new Date().toISOString()
-      });
-    },
-    onProxyReq: (proxyReq, req, res) => {
-      // Add custom headers for tracking
-      proxyReq.setHeader('X-Request-ID', req.requestId);
-      proxyReq.setHeader('X-Environment', req.environment);
-      proxyReq.setHeader('X-API-Key', req.apiKey);
-      
-      console.log(`Proxying request to ${serviceName}: ${req.method} ${req.url}`);
-    },
-    onProxyRes: (proxyRes, req, res) => {
-      // Add response headers
-      proxyRes.headers['X-Request-ID'] = req.requestId;
-      proxyRes.headers['X-Environment'] = req.environment;
-      proxyRes.headers['X-Processing-Time'] = req._startAt ? 
-        (process.hrtime(req._startAt)[0] * 1000 + process.hrtime(req._startAt)[1] / 1000000).toFixed(2) : 'unknown';
-    }
-  });
+// Authentication middleware
+const authenticateApiKey = (req, res, next) => {
+  console.log(`Auth middleware: ${req.method} ${req.url}`);
+  console.log(`Headers:`, req.headers);
+  
+  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  
+  if (!apiKey) {
+    console.log('No API key provided');
+    return res.status(401).json({
+      error: 'API key is required',
+      message: 'Please provide an API key in the x-api-key header or Authorization header'
+    });
+  }
+  
+  const validApiKeys = Object.values(config.API_KEYS);
+  console.log(`Valid API keys:`, validApiKeys);
+  console.log(`Provided API key:`, apiKey);
+  
+  if (!validApiKeys.includes(apiKey)) {
+    console.log('Invalid API key provided');
+    return res.status(403).json({
+      error: 'Invalid API key',
+      message: 'The provided API key is not valid'
+    });
+  }
+  
+  console.log('API key authentication successful');
+  console.log('Calling next() to proceed to proxy middleware...');
+  
+  // Add environment info to request for logging/debugging
+  req.environment = config.NODE_ENV;
+  req.apiKey = apiKey;
+  
+  next();
 };
 
-// Proxy routes with enhanced error handling
-app.use('/users', createEnhancedProxy(config.SERVICES.users, 'Users'));
-app.use('/orders', createEnhancedProxy(config.SERVICES.orders, 'Orders'));
+// Note: Using direct axios calls instead of proxy middleware for better reliability
+
+// Test route without authentication first
+app.use('/test-proxy', createProxyMiddleware({
+  target: config.SERVICES.users,
+  changeOrigin: true,
+  logLevel: 'debug'
+}));
+
+// Simple test route to verify middleware chaining
+app.get('/users/test-simple', authenticateApiKey, (req, res) => {
+  console.log('Simple test route reached!');
+  res.json({
+    success: true,
+    message: 'Simple test route working!',
+    requestId: req.requestId
+  });
+});
+
+// Protected routes with authentication and proxy
+console.log('Setting up /users route with authentication and proxy...');
+
+// Simple working solution - handle all /users routes manually
+app.all('/users', (req, res) => {
+  console.log(`Handling ${req.method} ${req.url}`);
+  
+  // Authentication
+  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  
+  if (!apiKey) {
+    return res.status(401).json({
+      error: 'API key is required',
+      message: 'Please provide an API key in the x-api-key header or Authorization header'
+    });
+  }
+  
+  const validApiKeys = Object.values(config.API_KEYS);
+  if (!validApiKeys.includes(apiKey)) {
+    return res.status(403).json({
+      error: 'Invalid API key',
+      message: 'The provided API key is not valid'
+    });
+  }
+  
+  console.log('API key authentication successful');
+  console.log(`Proxying request to Users: ${req.method} ${req.url}`);
+  console.log('Request body:', req.body);
+  
+  // Use axios to make the request to Users Service
+  const axios = require('axios');
+  const targetUrl = `${config.SERVICES.users}${req.url}`;
+  
+  console.log(`Target URL: ${targetUrl}`);
+  
+  // Forward the request
+  axios({
+    method: req.method,
+    url: targetUrl,
+    data: req.body,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': req.headers['x-api-key'],
+      'user-agent': req.headers['user-agent']
+    }
+  })
+  .then(response => {
+    console.log('Response from Users Service:', response.status);
+    console.log('Response data:', response.data);
+    res.status(response.status).json(response.data);
+  })
+  .catch(error => {
+    console.error('Error calling Users Service:', error.message);
+    console.error('Error details:', error.response?.data);
+    res.status(503).json({
+      success: false,
+      error: 'Service Unavailable',
+      message: 'Users service is currently unavailable',
+      details: error.message
+    });
+  });
+});
+
+app.all('/users/*', (req, res) => {
+  console.log(`Handling ${req.method} ${req.url}`);
+  
+  // Authentication
+  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  
+  if (!apiKey) {
+    return res.status(401).json({
+      error: 'API key is required',
+      message: 'Please provide an API key in the x-api-key header or Authorization header'
+    });
+  }
+  
+  const validApiKeys = Object.values(config.API_KEYS);
+  if (!validApiKeys.includes(apiKey)) {
+    return res.status(403).json({
+      error: 'Invalid API key',
+      message: 'The provided API key is not valid'
+    });
+  }
+  
+  console.log('API key authentication successful');
+  console.log(`Proxying request to Users: ${req.method} ${req.url}`);
+  console.log('Request body:', req.body);
+  
+  // Use axios to make the request to Users Service
+  const axios = require('axios');
+  const targetUrl = `${config.SERVICES.users}${req.url}`;
+  
+  console.log(`Target URL: ${targetUrl}`);
+  
+  // Forward the request
+  axios({
+    method: req.method,
+    url: targetUrl,
+    data: req.body,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': req.headers['x-api-key'],
+      'user-agent': req.headers['user-agent']
+    }
+  })
+  .then(response => {
+    console.log('Response from Users Service:', response.status);
+    console.log('Response data:', response.data);
+    res.status(response.status).json(response.data);
+  })
+  .catch(error => {
+    console.error('Error calling Users Service:', error.message);
+    console.error('Error details:', error.response?.data);
+    res.status(503).json({
+      success: false,
+      error: 'Service Unavailable',
+      message: 'Users service is currently unavailable',
+      details: error.message
+    });
+  });
+});
+
+console.log('Setting up /orders route with authentication and proxy...');
+
+// Simple working solution - handle all /orders routes manually
+app.all('/orders', (req, res) => {
+  console.log(`Handling ${req.method} ${req.url}`);
+  
+  // Authentication
+  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  
+  if (!apiKey) {
+    return res.status(401).json({
+      error: 'API key is required',
+      message: 'Please provide an API key in the x-api-key header or Authorization header'
+    });
+  }
+  
+  const validApiKeys = Object.values(config.API_KEYS);
+  if (!validApiKeys.includes(apiKey)) {
+    return res.status(403).json({
+      error: 'Invalid API key',
+      message: 'The provided API key is not valid'
+    });
+  }
+  
+  console.log('API key authentication successful');
+  console.log(`Proxying request to Orders: ${req.method} ${req.url}`);
+  console.log('Request body:', req.body);
+  
+  // Use axios to make the request to Orders Service
+  const axios = require('axios');
+  const targetUrl = `${config.SERVICES.orders}${req.url}`;
+  
+  console.log(`Target URL: ${targetUrl}`);
+  
+  // Forward the request
+  axios({
+    method: req.method,
+    url: targetUrl,
+    data: req.body,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': req.headers['x-api-key'],
+      'user-agent': req.headers['user-agent']
+    }
+  })
+  .then(response => {
+    console.log('Response from Orders Service:', response.status);
+    console.log('Response data:', response.data);
+    res.status(response.status).json(response.data);
+  })
+  .catch(error => {
+    console.error('Error calling Orders Service:', error.message);
+    console.error('Error details:', error.response?.data);
+    res.status(503).json({
+      success: false,
+      error: 'Service Unavailable',
+      message: 'Orders service is currently unavailable',
+      details: error.message
+    });
+  });
+});
+
+app.all('/orders/*', (req, res) => {
+  console.log(`Handling ${req.method} ${req.url}`);
+  
+  // Authentication
+  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  
+  if (!apiKey) {
+    return res.status(401).json({
+      error: 'API key is required',
+      message: 'Please provide an API key in the x-api-key header or Authorization header'
+    });
+  }
+  
+  const validApiKeys = Object.values(config.API_KEYS);
+  if (!validApiKeys.includes(apiKey)) {
+    return res.status(403).json({
+      error: 'Invalid API key',
+      message: 'The provided API key is not valid'
+    });
+  }
+  
+  console.log('API key authentication successful');
+  console.log(`Proxying request to Orders: ${req.method} ${req.url}`);
+  console.log('Request body:', req.body);
+  
+  // Use axios to make the request to Orders Service
+  const axios = require('axios');
+  const targetUrl = `${config.SERVICES.orders}${req.url}`;
+  
+  console.log(`Target URL: ${targetUrl}`);
+  
+  // Forward the request
+  axios({
+    method: req.method,
+    url: targetUrl,
+    data: req.body,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': req.headers['x-api-key'],
+      'user-agent': req.headers['user-agent']
+    }
+  })
+  .then(response => {
+    console.log('Response from Orders Service:', response.status);
+    console.log('Response data:', response.data);
+    res.status(response.status).json(response.data);
+  })
+  .catch(error => {
+    console.error('Error calling Orders Service:', error.message);
+    console.error('Error details:', error.response?.data);
+    res.status(503).json({
+      success: false,
+      error: 'Service Unavailable',
+      message: 'Orders service is currently unavailable',
+      details: error.message
+    });
+  });
+});
 
 // 404 handler - catch all unmatched routes
 app.use('/*', (req, res) => {

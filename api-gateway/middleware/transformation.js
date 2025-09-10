@@ -9,13 +9,16 @@ const transformRequest = (req, res, next) => {
   // Add timestamp
   req._startAt = process.hrtime();
   
+  // Set environment from config
+  req.environment = config.NODE_ENV;
+  
   // Transform request body if needed
   if (req.body && req.headers['content-type'] === 'application/json') {
     // Add metadata to request
     req.metadata = {
       timestamp: new Date().toISOString(),
       requestId: req.requestId,
-      environment: req.environment || 'unknown',
+      environment: req.environment,
       source: req.headers['user-agent'] || 'unknown'
     };
     

@@ -1,51 +1,60 @@
-# API Gateway Microservices POC
+# Microservices POC with React Frontend
 
-This project demonstrates a comprehensive API Gateway implementation with various enterprise-level features, built using Node.js and Express. The gateway acts as a central entry point for multiple microservices, providing authentication, throttling, logging, and request/response transformation.
+This project demonstrates a comprehensive microservices architecture with a React frontend that integrates seamlessly with multiple backend microservices using an API Gateway. The system includes enterprise-level features like authentication, throttling, logging, and a modern React frontend with Redux Toolkit for state management.
 
 ## 🚀 Features Implemented
 
-### 1. **API Gateway Basics**
+### 1. **React Frontend**
+- **Modern UI**: React 18 with TypeScript for type safety
+- **State Management**: Redux Toolkit for centralized state management
+- **Modular Components**: Separate pages for Users and Orders domains
+- **Error Handling**: Comprehensive error handling with retry logic
+- **Loading States**: User-friendly loading indicators
+- **Responsive Design**: Mobile-first responsive design
+- **API Integration**: Seamless integration with microservices via API Gateway
+
+### 2. **API Gateway Basics**
 - **Centralized Routing**: Single entry point for all microservices
 - **Service Discovery**: Automatic routing to appropriate backend services
 - **Load Balancing**: Ready for horizontal scaling
 
-### 2. **HTTP API with Mock Responses**
+### 3. **HTTP API with Mock Responses**
 - **Mock Endpoints**: `/mock/users`, `/mock/products` for learning and testing
 - **CRUD Operations**: Demonstrate GET, POST operations with mock data
 - **Response Formatting**: Consistent JSON response structure
 
-### 3. **Backend Integration**
+### 4. **Backend Integration**
 - **Proxy Middleware**: Seamless integration with Users and Orders services
 - **Error Handling**: Graceful fallback when services are unavailable
 - **Header Propagation**: Forward authentication and tracking headers
 
-### 4. **API Key Authentication**
+### 5. **API Key Authentication**
 - **Security Layer**: Protect sensitive endpoints with API keys
 - **Environment-based Keys**: Different keys for dev/prod environments
 - **Header Support**: `x-api-key` or `Authorization: Bearer <key>`
 
-### 5. **Throttling & Rate Limiting**
+### 6. **Throttling & Rate Limiting**
 - **Global Rate Limiting**: 100 requests per 15 minutes per IP
 - **Endpoint-specific Limits**: Customizable limits for different routes
 - **Authentication Rate Limiting**: Stricter limits for auth endpoints
 
-### 6. **Request/Response Mapping**
+### 7. **Request/Response Mapping**
 - **Request Transformation**: Add metadata, request IDs, timestamps
 - **Response Transformation**: Standardize response format with metadata
 - **Data Validation**: Basic request validation middleware
 
-### 7. **Logging Features**
+### 8. **Logging Features**
 - **Request Logging**: Comprehensive request tracking with Morgan
 - **Response Logging**: Response time, size, and status tracking
 - **Error Logging**: Detailed error logging with Winston
 - **File Logging**: Persistent logs in `logs/` directory
 
-### 8. **Environment Stages**
+### 9. **Environment Stages**
 - **Development Mode**: Enhanced logging, detailed error messages
 - **Production Mode**: Optimized performance, minimal logging
 - **Configuration Management**: Environment-specific settings
 
-### 9. **Health Monitoring**
+### 10. **Health Monitoring**
 - **Service Health Checks**: Monitor gateway and microservice health
 - **Readiness Probes**: Check if services are ready to accept requests
 - **Liveness Probes**: Verify service process health
@@ -54,13 +63,13 @@ This project demonstrates a comprehensive API Gateway implementation with variou
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Client Apps   │───▶│  API Gateway    │───▶│  Microservices  │
+│  React Frontend │───▶│  API Gateway    │───▶│  Microservices  │
 │                 │    │                 │    │                 │
-└─────────────────┘    │ • Auth          │    │ • Users Service │
-                       │ • Throttling    │    │ • Orders Service│
-                       │ • Logging       │    │                 │
-                       │ • Transformation│    └─────────────────┘
-                       │ • Health Checks │
+│ • Redux Toolkit │    │ • Auth          │    │ • Users Service │
+│ • TypeScript    │    │ • Throttling    │    │ • Orders Service│
+│ • Components    │    │ • Logging       │    │                 │
+│ • Error Handling│    │ • Transformation│    └─────────────────┘
+└─────────────────┘    │ • Health Checks │
                        └─────────────────┘
 ```
 
@@ -68,6 +77,16 @@ This project demonstrates a comprehensive API Gateway implementation with variou
 
 ```
 microservices-poc/
+├── frontend/                    # React Frontend Application
+│   ├── src/
+│   │   ├── components/         # React components
+│   │   ├── hooks/              # Custom React hooks
+│   │   ├── services/           # API services
+│   │   ├── store/              # Redux store
+│   │   ├── types/              # TypeScript types
+│   │   └── App.tsx             # Main app component
+│   ├── package.json            # Frontend dependencies
+│   └── README.md              # Frontend documentation
 ├── api-gateway/                 # Main API Gateway
 │   ├── config.js               # Configuration management
 │   ├── index.js                # Main gateway server
@@ -94,19 +113,25 @@ microservices-poc/
 
 ### Installation
 
-1. **Install API Gateway dependencies:**
+1. **Install Frontend dependencies:**
    ```bash
-   cd api-gateway
+   cd frontend
    npm install
    ```
 
-2. **Install Users Service dependencies:**
+2. **Install API Gateway dependencies:**
+   ```bash
+   cd ../api-gateway
+   npm install
+   ```
+
+3. **Install Users Service dependencies:**
    ```bash
    cd ../users-service
    npm install
    ```
 
-3. **Install Orders Service dependencies:**
+4. **Install Orders Service dependencies:**
    ```bash
    cd ../orders-service
    npm install
@@ -135,6 +160,13 @@ microservices-poc/
    # or
    npm run prod   # Production mode
    # Gateway runs on http://localhost:4000
+   ```
+
+4. **Start React Frontend:**
+   ```bash
+   cd frontend
+   npm run dev
+   # Frontend runs on http://localhost:5173
    ```
 
 ## 🔑 API Keys
